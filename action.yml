@@ -1,0 +1,35 @@
+name: 'UploadAssetToRelease'
+description: 'GitHub action to upload assets to existing releases'
+author: 'RandLabs Inc.'
+
+branding:
+  color: "blue"
+  icon: "file"
+
+inputs:
+  release_id:
+    description: 'The ID of the release where files must be uploaded.'
+    required: false
+  tag:
+    description: 'The release tag where files must be uploaded if an ID is not provided. If tag is also empty, the action will try to determine the release id based on the execution context.'
+    required: false
+  files:
+    description: 'A multi-line list of files. If an item contains wildcard, a glob search will be executed.'
+    required: true
+  delete_filemask:
+    description: 'If specified, deletes all existing assets that matches any of the wildcard patterns.'
+    required: false
+  overwrite:
+    description: 'Tries to overwrite an asset if it already exists.'
+    required: false
+  repo:
+    description: 'Target repository in <owner-or-company>/<repository> format.'
+    required: false
+
+outputs:
+  assets:
+    description: 'A JSON array containing id and download url of each uploaded asset.'
+
+runs:
+  using: 'node16'
+  main: 'dist/index.js'
