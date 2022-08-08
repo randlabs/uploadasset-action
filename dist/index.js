@@ -81,8 +81,14 @@ function run() {
             }
             else {
                 // If no id was provided, try with tag
-                const tagName = core.getInput('tag');
+                let tagName = core.getInput('tag');
                 if (tagName) {
+                    if (tagName.startsWith('refs/tags/')) {
+                        tagName = tagName.substring(10);
+                        if (tagName.length == 0) {
+                            throw new Error('invalid `tag` input');
+                        }
+                    }
                     // Get the release that belong to that tag
                     const releaseInfo = yield octokit.rest.repos.getReleaseByTag({
                         owner,
@@ -191,6 +197,8 @@ function run() {
                 const contentLength = fs.statSync(file).size;
                 // Guess mime type
                 const contentType = mimeTypes.lookup(assetName) || 'application/octet-stream';
+                // Load file into memory
+                const content = fs.readFileSync(file);
                 let tryToDelete = true;
                 for (let retryCount = 1;;) {
                     // Try to upload
@@ -200,7 +208,7 @@ function run() {
                             repo,
                             release_id: releaseId,
                             name: assetName,
-                            data: fs.readFileSync(file, 'binary'),
+                            data: content,
                             headers: {
                                 'content-type': contentType,
                                 'content-length': contentLength
@@ -210,11 +218,13 @@ function run() {
                             id: assetInfo.data.id,
                             url: assetInfo.data.browser_download_url
                         });
+                        core.info('-> uploaded');
                     }
                     catch (err) {
                         // Handle errors
                         if (err.status === 422 && overwrite && tryToDelete) {
                             let assetId = 0;
+                            core.info('-> the asset already exists');
                             const realAssetName = normalizeGithubAssetName(assetName);
                             const assetsListInfo = yield octokit.rest.repos.listReleaseAssets({
                                 owner,
@@ -230,6 +240,7 @@ function run() {
                                 }
                             }
                             if (assetId > 0) {
+                                core.info('-> trying to delete asset with id #' + assetId.toString());
                                 // Try to delete existing asset
                                 try {
                                     yield octokit.rest.repos.deleteReleaseAsset({
@@ -242,6 +253,12 @@ function run() {
                                     // Handle release not found error
                                     if (err2.status !== 404 && err2.message !== 'Not Found') {
                                         throw err2;
+                                    }
+                                    if (tryToDelete != true) {
+                                        tryToDelete = false;
+                                    }
+                                    else {
+                                        throw err;
                                     }
                                 }
                                 // Retry
