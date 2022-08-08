@@ -45,8 +45,14 @@ async function run(): Promise<void> {
 		}
 		else {
 			// If no id was provided, try with tag
-			const tagName = core.getInput('tag');
+			let tagName = core.getInput('tag');
 			if (tagName) {
+				if (tagName.startsWith('refs/tags/')) {
+					tagName = tagName.substring(10);
+					if (tagName.length == 0) {
+						throw new Error('invalid `tag` input');
+					}
+				}
 				// Get the release that belong to that tag
 				const releaseInfo = await octokit.rest.repos.getReleaseByTag({
 					owner,
@@ -173,6 +179,9 @@ async function run(): Promise<void> {
 			// Guess mime type
 			const contentType = mimeTypes.lookup(assetName) || 'application/octet-stream';
 
+			// Load file into memory
+			const content = fs.readFileSync(file);
+
 			let tryToDelete = true;
 			for (let retryCount = 1; ; ) {
 				// Try to upload
@@ -182,7 +191,7 @@ async function run(): Promise<void> {
 						repo,
 						release_id: releaseId,
 						name: assetName,
-						data: fs.readFileSync(file, 'binary'),
+						data: content as any,
 						headers: {
 							'content-type': contentType,
 							'content-length': contentLength
@@ -193,12 +202,15 @@ async function run(): Promise<void> {
 						id: assetInfo.data.id,
 						url: assetInfo.data.browser_download_url
 					});
+
+					core.info('-> uploaded');
 				}
 				catch (err: any) {
 					// Handle errors
 					if (err.status === 422 && overwrite && tryToDelete) {
 						let assetId = 0;
 
+						core.info('-> the asset already exists');
 						const realAssetName = normalizeGithubAssetName(assetName);
 
 						const assetsListInfo = await octokit.rest.repos.listReleaseAssets({
@@ -216,6 +228,8 @@ async function run(): Promise<void> {
 						}
 
 						if (assetId > 0) {
+							core.info('-> trying to delete asset with id #' + assetId.toString());
+
 							// Try to delete existing asset
 							try {
 								await octokit.rest.repos.deleteReleaseAsset({
@@ -228,6 +242,13 @@ async function run(): Promise<void> {
 								// Handle release not found error
 								if (err2.status !== 404 && err2.message !== 'Not Found') {
 									throw err2;
+								}
+
+								if (tryToDelete != true) {
+									tryToDelete = false;
+								}
+								else {
+									throw err;
 								}
 							}
 
