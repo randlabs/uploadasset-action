@@ -35,5 +35,3 @@
 *.ez binary
 *.bz2 binary
 *.swp binary
-
-dist/** -diff linguist-generated=true
