@@ -31,5 +31,5 @@ outputs:
     description: 'A JSON array containing id and download url of each uploaded asset.'
 
 runs:
-  using: 'node16'
+  using: 'node20'
   main: 'dist/index.js'
