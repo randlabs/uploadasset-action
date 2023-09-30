@@ -23,7 +23,7 @@ A [GitHub Action][github-actions-url] to upload assets to an existing release wr
 
 ```YML
 inputs:
-  release_id:
+  release-id:
     description: 'The ID of the release where files must be uploaded.'
     required: false
   tag:
@@ -32,7 +32,7 @@ inputs:
   files:
     description: 'A multi-line list of files. If an item contains wildcard, a glob search will be executed.'
     required: true
-  delete_filemask:
+  delete-filemask:
     description: 'If specified, deletes all existing assets that matches any of the wildcard patterns.'
     required: false
   overwrite:
